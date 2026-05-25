@@ -61,7 +61,7 @@ Copilot acted as a supportive tool—similar to an intelligent pair‑programmin
 ---
 
 ## 🏗 Project Structure
-
+```
 EventEaseApp/
 │
 ├── Layout/
@@ -97,7 +97,7 @@ EventEaseApp/
 ├── favicon.png
 ├── icon-192.png
 └── index.html
-
+```
 ---
 
 ## 🧠 Key Components & Pages
@@ -182,5 +182,3 @@ https://localhost:5044
 - Edit & Delete Events
 - Persistent Storage (SQLite or EF Core)
 - Toast Notification
-
-
