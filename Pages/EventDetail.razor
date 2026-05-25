@@ -1,0 +1,155 @@
+@page "/events/{id}"
+@inject EventEase.Services.EventEaseService EventService
+@inject EventEase.Services.RegistrationService RegistrationService
+@inject EventEase.Services.SessionService SessionService
+
+<h3>Event Details</h3>
+
+@if (evt == null)
+{
+    <p>Event not found.</p>
+}
+else
+{
+    <div class="event-detail">
+        <h2>@evt.Name</h2>
+        <p><strong>Date:</strong> @(evt.Date.HasValue ? evt.Date.Value.ToString("MMMM dd, yyyy") : "No date")</p>
+        <p><strong>Location:</strong> @evt.Location</p>
+
+        <h4>Attendance</h4>
+        @if (!registrations.Any())
+        {
+            <p>No registrations yet.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Attended</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in registrations)
+                    {
+                        <tr>
+                            <td>@r.Name</td>
+                            <td>@r.Email</td>
+                            <td>@(r.Attended ? "Yes" : "No")</td>
+                            <td>
+                                @if (r.Attended)
+                                {
+                                    <span class="badge bg-success">Checked in</span>
+                                }
+                                else if (evt.Date.HasValue && evt.Date.Value.Date == DateTime.Now.Date)
+                                {
+                                    <span class="badge bg-warning text-dark">Can check in</span>
+                                    <button class="btn btn-sm btn-primary" @onclick="() => ToggleAttendance(r.Id)">Toggle</button>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Not available</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (SessionService.CurrentUser != null && SessionService.CurrentUser.EventId == id)
+        {
+            <div class="my-registration mt-3">
+                <h5>Your registration</h5>
+                <p>@SessionService.CurrentUser.Name (@SessionService.CurrentUser.Email)</p>
+                @if (!SessionService.CurrentUser.Attended)
+                {
+                    @if (evt.Date.HasValue && evt.Date.Value == DateTime.Now)
+                    {
+                        <button class="btn btn-success" @onclick="CheckInCurrentUser">Check in</button>
+                    }
+
+                    @if (hasCancelled)
+                    {
+                        <span class="badge bg-danger">Registration cancelled</span>
+                    }
+                    else
+                    {
+                        <button class="btn btn-danger" @onclick="CancelCurrentUser">Cancel Registration</button>
+                    }
+                }
+                else
+                {
+                    <span class="badge bg-success">Already Checked in</span>
+                }
+            </div>
+        }
+
+        <div class="mt-4">
+            <a href="/register-for-event/@evt.Id" class="btn btn-primary">Register for this Event</a>
+        </div>
+
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string id { get; set; } = string.Empty;
+
+    private bool hasCancelled = false;
+
+    private EventEase.Models.Event? evt;
+    private List<EventEase.Models.Register> registrations = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await RegistrationService.InitializeAsync();
+        await SessionService.InitializeAsync();
+
+
+        evt = EventService.GetAllEvents().FirstOrDefault(e => e.Id == id);
+        if (evt == null) return;
+
+        registrations = (await RegistrationService.GetForEventAsync(id)).ToList();
+    }
+
+    private async Task ToggleAttendance(string regId)
+    {
+        await RegistrationService.ToggleAttendanceAsync(regId);
+        registrations = (await RegistrationService.GetForEventAsync(id)).ToList();
+    }
+
+    private async Task CheckInCurrentUser()
+    {
+        if (SessionService.CurrentUser == null) return;
+
+        await RegistrationService.ToggleAttendanceAsync(SessionService.CurrentUser.Id);
+        await SessionService.InitializeAsync();
+        registrations = (await RegistrationService.GetForEventAsync(id)).ToList();
+        StateHasChanged();
+    }
+
+    private async Task CancelCurrentUser()
+    {
+        if (SessionService.CurrentUser == null) return;
+
+        hasCancelled = await RegistrationService.CancelRegistrationAsync(SessionService.CurrentUser.Id);
+        if (hasCancelled)
+        {
+            SessionService.SignOutAsync();
+            hasCancelled = false;
+            await SessionService.InitializeAsync();
+            registrations = (await RegistrationService.GetForEventAsync(id)).ToList();
+            StateHasChanged();
+        }
+        else
+        {
+            SessionService.SignOutAsync();
+            // Handle cancellation failure (e.g., show an error message)
+            Console.WriteLine("Cancellation failed. Registration may not exist or is already cancelled.");
+        }
+    }
+}

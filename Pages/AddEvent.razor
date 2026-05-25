@@ -1,0 +1,52 @@
+﻿@page "/add-event"
+@inject NavigationManager Navigation
+@inject EventEase.Services.EventEaseService EventService
+
+<h3> Add New Event</h3>
+<EditForm Model="newEvent" FormName="AddEventForm" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label for="name">Event Name</label>
+        <InputText id="name" class="form-control" @bind-Value="newEvent.Name" required />
+        <ValidationMessage For="@(() => newEvent.Name)" />
+    </div>
+
+    <div class="form-group">
+        <label for="date">Date</label>
+        <InputDate id="date" class="form-control" @bind-Value="newEvent.Date" required />
+        <ValidationMessage For="@(() => newEvent.Date)" />
+    </div>
+
+    <div class="form-group">
+        <label for="location">Location</label>
+        <InputText id="location" class="form-control" @bind-Value="newEvent.Location" required />
+        <ValidationMessage For="@(() => newEvent.Location)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Add Event</button>
+
+    @if (showSuccessMessage)
+    {
+        <div class="alert alert-success mt-3">
+            <p> Event added successfully! Redirecting... </p>
+        </div>
+    }
+</EditForm>
+
+@code {
+    private EventEase.Models.Event newEvent = new EventEase.Models.Event();
+    private bool showSuccessMessage = false;
+
+    private async Task HandleValidSubmit()
+    {
+        Console.WriteLine($"Adding Event: {newEvent.Name}, Date: {newEvent.Date}, Location: {newEvent.Location}");
+        EventService.AddEvent(newEvent);
+        showSuccessMessage = true;
+
+        // Redirect to events page after a short delay
+        await Task.Delay(2000);
+        Navigation.NavigateTo("/events");
+    }
+}

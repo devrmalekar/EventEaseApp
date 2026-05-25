@@ -1,0 +1,28 @@
+@using EventEase.Models
+@inject NavigationManager Navigation
+
+<div class="event-card">
+    <h3>@Event.Name</h3>
+    <p><strong>Date:</strong> @(Event.Date.HasValue ? Event.Date.Value.ToString("MMMM dd, yyyy") : "No date")</p>
+    <p><strong>Location:</strong> @Event.Location</p>
+    <div class="event-card-actions">
+        <button class="btn btn-outline-primary btn-sm me-2" @onclick="ViewDetails">Details</button>
+        <button class="btn btn-primary btn-sm" @onclick="RegisterForEvent">Register</button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Event Event { get; set; } = default!;
+
+    private void RegisterForEvent()
+    {
+        Console.WriteLine("Register for Event Clicked");
+        Navigation.NavigateTo($"/register-for-event/{Event.Id}");
+    }
+
+    private void ViewDetails()
+    {
+        Navigation.NavigateTo($"/events/{Event.Id}");
+    }
+}

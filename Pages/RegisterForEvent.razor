@@ -1,0 +1,109 @@
+﻿@page "/register-for-event/{eventId?}"
+@inject NavigationManager Navigation
+@inject EventEase.Services.EventEaseService EventService
+@inject EventEase.Services.RegistrationService RegistrationService
+@inject EventEase.Services.SessionService SessionService
+@*
+ Route parameter 'eventId' provided below as a [Parameter] property
+*@
+
+<h3> Register for Event</h3>
+<EditForm Model="newRegister" FormName="RegisterForEvent" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label for="location">Event Id</label>
+        <InputSelect @bind-value="newRegister.EventId" class="form-control" id="eventId" required>
+            <option value="">Select an event</option>
+            @foreach (var ev in EventService.GetAllEvents())
+            {
+                <option value="@ev.Id">@ev.Name</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="@(() => newRegister.EventId)" />
+    </div>
+
+    <div class="form-group">
+        <label for="name">Name</label>
+        <InputText id="name" class="form-control" @bind-Value="newRegister.Name" required />
+        <ValidationMessage For="@(() => newRegister.Name)" />
+    </div>
+
+    <div class="form-group">
+        <label for="email">Email</label>
+        <InputText id="email" class="form-control" @bind-Value="newRegister.Email" required />
+        <ValidationMessage For="@(() => newRegister.Email)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Register for Event</button>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3">
+            <p>@errorMessage</p>
+        </div>
+    }
+
+    @if (showSuccessMessage)
+    {
+        <div class="alert alert-success mt-3">
+            <p> Thank you for registering! Redirecting... </p>
+        </div>
+    }
+</EditForm>
+
+@code {
+    [Parameter]
+    public string? eventId { get; set; }
+
+    private EventEase.Models.Register newRegister = new EventEase.Models.Register();
+    private bool showSuccessMessage = false;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RegistrationService.InitializeAsync();
+        await SessionService.InitializeAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        // support eventId route parameter to pre-select event
+        if (!string.IsNullOrEmpty(eventId))
+        {
+            newRegister.EventId = eventId;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        errorMessage = null;
+        Console.WriteLine($"Adding Register: {newRegister.Name}, Email: {newRegister.Email}, Event ID: {newRegister.EventId}");
+
+        if (string.IsNullOrWhiteSpace(newRegister.EventId))
+        {
+            errorMessage = "Please select an event.";
+            return;
+        }
+
+        if (!EventService.EventExists(newRegister.EventId))
+        {
+            errorMessage = "Selected event does not exist.";
+            return;
+        }
+
+        if (await RegistrationService.ExistsAsync(newRegister.EventId, newRegister.Email))
+        {
+            errorMessage = "This email is already registered for the selected event.";
+            return;
+        }
+
+        await RegistrationService.AddAsync(newRegister);
+        await SessionService.SignInAsync(newRegister);
+        showSuccessMessage = true;
+
+        await Task.Delay(1000);
+        Navigation.NavigateTo($"/events/{newRegister.EventId}");
+    }
+}
